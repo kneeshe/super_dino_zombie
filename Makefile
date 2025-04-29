@@ -1,4 +1,4 @@
-TARGET=super_dino
+TARGET=super_cthulhu
 CC=gcc
 DEBUG=-g
 OPT=-O0

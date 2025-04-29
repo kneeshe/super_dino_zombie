@@ -8,8 +8,11 @@
 #include <allegro5/events.h>
 #include <allegro5/keyboard.h>
 #include <allegro5/keycodes.h>
+#include <allegro5/mouse.h>
+#include <allegro5/mouse_cursor.h>
 #include <allegro5/system.h>
 #include <allegro5/timer.h>
+#include <allegro5/transformations.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +24,7 @@
 #include <allegro5/allegro_acodec.h>
 
 //aqui vão as variaveis globais e consts
-#define WIDTH 720
+#define WIDTH 640
 #define HEIGHT 480
 #define KEY_SEEN 1
 #define KEY_DOWN 2
@@ -42,6 +45,7 @@ void must_init(bool test, const char *description) {
 int main() {
   must_init(al_init(), "allegro");
   must_init(al_install_keyboard(), "keyboard");
+  must_init(al_install_mouse(), "mouse");
 
   ALLEGRO_TIMER *timer = al_create_timer(1/FPS);
   must_init(timer, "timer");
@@ -52,8 +56,17 @@ int main() {
   al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
   al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
   al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
+  // al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
   ALLEGRO_DISPLAY *display = al_create_display(WIDTH, HEIGHT);
   must_init(display, "display");
+
+  const float scale_factor_x = ((float)al_get_display_width(display)) / WIDTH;
+  const float scale_factor_y = ((float)al_get_display_height(display)) / HEIGHT;
+
+  ALLEGRO_TRANSFORM t;
+  al_identity_transform(&t);
+  al_scale_transform(&t, scale_factor_x, scale_factor_y);
+  al_use_transform(&t);
 
   ALLEGRO_FONT *font = al_create_builtin_font();
   must_init(font, "font");
@@ -84,8 +97,12 @@ int main() {
   must_init(dude, "dude");
 
   al_register_event_source(queue, al_get_keyboard_event_source());
+  al_register_event_source(queue, al_get_mouse_event_source());
   al_register_event_source(queue, al_get_display_event_source(display));
   al_register_event_source(queue, al_get_timer_event_source(timer));
+
+  al_hide_mouse_cursor(display);
+  al_grab_mouse(display);
 
   bool done = false;
   bool redraw = true;
@@ -96,6 +113,12 @@ int main() {
   float char_x = 100;
   float char_y = 100;
   float vel = 5;
+
+  //var para o tiro
+  float shot_x = 10;
+  float shot_y = char_y;
+  float dsy = 0;
+  bool shot = false;
 
   unsigned char key[ALLEGRO_KEY_MAX];
   memset(key, 0, sizeof(key));
@@ -132,7 +155,7 @@ int main() {
         }
 
         if(key[ALLEGRO_KEY_M]) {
-          al_play_sample(scream, 0.3, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+          al_ungrab_mouse();
         }
 
         if(key[ALLEGRO_KEY_ESCAPE]){
@@ -160,10 +183,10 @@ int main() {
     if(redraw && al_is_event_queue_empty(queue)) {
       al_clear_to_color(al_map_rgb(0, 0, 0));
 
-      al_draw_filled_rectangle(char_x, char_y, char_x + 50, char_y + 50, al_map_rgb(255, 0, 0));
-      // al_draw_bitmap(dude, char_x, char_y, 0);
-      // al_draw_bitmap_region(dude);
-      
+     al_draw_filled_rectangle(char_x, char_y, char_x + 50, char_y + 50, al_map_rgb(255, 0, 0));
+
+     al_draw_line(shot_x, shot_y, shot_x + 10, shot_y, al_map_rgba(249, 194, 48, 0.15), 4);
+     al_draw_line(shot_x, shot_y, shot_x + 10, shot_y, al_map_rgba(208, 155, 10, 0.6), 2);
 
       al_flip_display();
     }
