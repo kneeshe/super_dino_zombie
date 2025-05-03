@@ -1,4 +1,3 @@
-//as libs vão aqui
 #include <allegro5/bitmap.h>
 #include <allegro5/bitmap_draw.h>
 #include <allegro5/bitmap_io.h>
@@ -23,7 +22,6 @@
 #include <allegro5/allegro_audio.h>
 #include <allegro5/allegro_acodec.h>
 
-//aqui vão as variaveis globais e consts
 #define WIDTH 640
 #define HEIGHT 480
 #define KEY_SEEN 1
@@ -32,7 +30,6 @@
 const float FPS = 30.0;
 const float GRAVITY = 0.5;
 
-//as funções auxiliares vão aqui
 void must_init(bool test, const char *description) {
   if(test) {
     return;
@@ -41,7 +38,22 @@ void must_init(bool test, const char *description) {
   exit(1);
 }
 
-//função principal
+bool collide(int ax1, int ay1, int ax2, int ay2, int bx1, int by1, int bx2, int by2){
+   if(ax1 > bx2) return false;
+   if(ax2 < bx1) return false;
+   if(ay1 > by2) return false;
+   if(ay2 < by1) return false;
+
+   return true;
+}
+
+typedef struct CHAR {
+  float x;
+  float x2;
+  float y;
+  float y2;
+} CHAR;
+
 int main() {
   must_init(al_init(), "allegro");
   must_init(al_install_keyboard(), "keyboard");
@@ -56,7 +68,7 @@ int main() {
   al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
   al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
   al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
-  al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
+  // al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
   ALLEGRO_DISPLAY *display = al_create_display(WIDTH, HEIGHT);
   must_init(display, "display");
 
@@ -92,7 +104,6 @@ int main() {
 
 
   must_init(al_init_image_addon(), "image");
-  //aqui irão os bitmaps
   ALLEGRO_BITMAP *bgImg = al_load_bitmap("./assets/bg/1.png");
   must_init(bgImg, "1");
   ALLEGRO_BITMAP *midImg = al_load_bitmap("./assets/bg/2.png");
@@ -105,9 +116,12 @@ int main() {
   must_init(fgImg, "5");
   ALLEGRO_BITMAP *fgImg2 = al_load_bitmap("./assets/bg/6.png");
   must_init(fgImg2, "6");
-
   ALLEGRO_BITMAP *hero = al_load_bitmap("./assets/vect.png");
   must_init(hero, "hero");
+  // ALLEGRO_BITMAP *demon = al_load_bitmap("");
+  // must_init(demon, "demon");
+  ALLEGRO_BITMAP *cross = al_load_bitmap("./assets/crosshair.png");
+  must_init(cross, "crosshair");
 
   al_register_event_source(queue, al_get_keyboard_event_source());
   al_register_event_source(queue, al_get_mouse_event_source());
@@ -122,18 +136,30 @@ int main() {
 
   ALLEGRO_EVENT event;
 
-  //var para o personagem
-  float char_x = 100;
-  float char_y = 100;
-  float char_x2 = 150;
-  float char_y2 = 150;
-  float vel = 5;
+  CHAR john;
+  john.x = 100;
+  john.y = 100;
+  john.x2 = john.x + 50;
+  john.y2 = john.y + 50;
 
-  //var para o tiro
-  float shot_x = 10;
-  float shot_y = char_y;
-  float dsy = 0;
-  bool shot = false;
+  CHAR enemy;
+  enemy.x = 200;
+  enemy.y = 200;
+  enemy.x2 = enemy.x + 50;
+  enemy.y2 = enemy.y + 50;
+
+  float vel = 15;
+  float dx = 0;
+  float dy = 0;
+
+  float mouse_x = 0;
+  float mouse_y = 0;
+
+  int ponto = 0;
+
+  bool jump = false;
+  float jumpSpeed = 15;
+  float ground = HEIGHT - 10;
 
   unsigned char key[ALLEGRO_KEY_MAX];
   memset(key, 0, sizeof(key));
@@ -145,36 +171,41 @@ int main() {
     switch (event.type) {
       case ALLEGRO_EVENT_TIMER:
         if(key[ALLEGRO_KEY_W]) {
-          char_y -= vel;
-          char_y2 -= vel;
-          if(char_y < 0){
-            char_y *= -1;
+          john.y -= vel;
+          john.y2 -= vel;
+          if(john.y < 0){
+            john.y -= -1;
           }
         }
+        // if(key[ALLEGRO_KEY_W] && jump){
+          // dy = -jumpSpeed;
+          // jump = false;
+        // }
         if(key[ALLEGRO_KEY_S]){
-          char_y += vel;
-          char_y2 += vel;
-          if(char_y > HEIGHT){
-              char_y -= (char_y - HEIGHT) * 2;
+          john.y += vel;
+          john.y2 += vel;
+          if(john.y > (ground + john.y)){
+              john.y -= (john.y - ground) * 2;
+          }
+          if(john.y2 > ground){
+              john.y2 -= (john.y2 - ground) * 2;
           }
         }
         if(key[ALLEGRO_KEY_A]){
-          char_x -= vel;
-          char_x2 -= vel;
-          if(char_x < 0) {
-            char_x *= -1;
+          john.x -= vel;
+          john.x2 -= vel;
+          if(john.x < 0) {
+            john.x -= -1;
           }
         }
         if(key[ALLEGRO_KEY_D]){
-          char_x += vel;
-          char_x2 += vel;
-          if(char_x > WIDTH) {
-            char_x -= (char_x - WIDTH) * 2;
+          john.x += vel;
+          john.x2 += vel;
+          if(john.x > WIDTH) {
+            john.x -= (john.x - WIDTH) * 2;
           }
         }
-
-        if(key[ALLEGRO_KEY_M]) {
-          al_ungrab_mouse();
+        if(key[ALLEGRO_KEY_X]){
         }
 
         if(key[ALLEGRO_KEY_ESCAPE]){
@@ -184,6 +215,20 @@ int main() {
         for(int i = 0; i < ALLEGRO_KEY_MAX; i++) {
           key[i] &= ~KEY_SEEN;
         }
+
+        // if(!jump){
+          // dy += GRAVITY;
+        // }else {
+          // dy = 0;
+          // john.x += dx;
+          // john.y = dy;
+        // }
+
+        // jump = (john.y + 32 >= 200);
+
+        // if(jump){
+          // john.y = 560 - 32;
+        // }
 
         redraw = true;
         break;
@@ -197,38 +242,44 @@ int main() {
       case ALLEGRO_EVENT_DISPLAY_CLOSE:
         done = true;
         break;
-    }
 
-    if(event.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
-      al_draw_filled_circle(0, 0, 20, al_map_rgb(0, 255, 0));
+      case ALLEGRO_EVENT_MOUSE_AXES:
+        mouse_x = event.mouse.x;
+        mouse_y = event.mouse.y;
 
-    }
+      case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
+        if(event.mouse.button & 1){
+          if(collide(mouse_x, mouse_y, mouse_x, mouse_y, enemy.x, enemy.y, enemy.x2, enemy.y2)){
+            ponto++;
+          }
+        }
 
     if(redraw && al_is_event_queue_empty(queue)) {
       al_clear_to_color(al_map_rgb(0, 0, 0));
 
-     al_draw_scaled_bitmap(bgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
-     al_draw_scaled_bitmap(midImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
-     al_draw_scaled_bitmap(midImg2, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
-     al_draw_scaled_bitmap(midImg3, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
-     al_draw_scaled_bitmap(fgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
-     al_draw_scaled_bitmap(fgImg2, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
+      al_draw_scaled_bitmap(bgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
+      al_draw_scaled_bitmap(midImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
+      al_draw_scaled_bitmap(midImg2, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
+      al_draw_scaled_bitmap(midImg3, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
+      al_draw_scaled_bitmap(fgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
+      al_draw_scaled_bitmap(fgImg2, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
 
-     // al_draw_filled_rectangle(char_x, char_y, char_x2, char_y2, al_map_rgb(255, 0, 0));
-     al_draw_scaled_bitmap(hero, 0, 0, 3000, 3000, char_x, char_y, char_x2, char_y2, 0);
+      al_draw_filled_rectangle(john.x, john.y, john.x2, john.y2, al_map_rgb(255, 0, 0));
+      al_draw_filled_rectangle(enemy.x, enemy.y, enemy.x2, enemy.y2, al_map_rgb(255, 255, 0));
+     // al_draw_scaled_bitmap(hero, 0, 0, 3000, 3000, john.x, john.y, john.x2, john.y2, 0);
 
-     // al_draw_line(shot_x, shot_y, shot_x + 10, shot_y, al_map_rgba(249, 194, 48, 0.15), 4);
-     // al_draw_line(shot_x, shot_y, shot_x + 10, shot_y, al_map_rgba(208, 155, 10, 0.6), 2);
+      al_draw_scaled_bitmap(cross, 0, 0, 1024, 1024, mouse_x, mouse_y, 25, 25, 0);
+      al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Pontuação %d", ponto);
 
-
+      al_draw_text(font, al_map_rgb(255, 255, 255), WIDTH - 130, HEIGHT - 15, 0, "whynot?! Studios");
       al_flip_display();
     }
 
     if(done){
       break;
     }
-  
   }
+}
 
   al_destroy_display(display);
   al_destroy_event_queue(queue);
@@ -244,6 +295,8 @@ int main() {
   al_destroy_bitmap(fgImg);
   al_destroy_bitmap(fgImg2);
   al_destroy_bitmap(hero);
+  // al_destroy_bitmap(demon);
+  al_destroy_bitmap(cross);
 
 
   return 0;
