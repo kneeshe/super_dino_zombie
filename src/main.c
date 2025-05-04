@@ -231,7 +231,7 @@ while(!done) {
           if(event.mouse.button & 1){
             if(collide(mouse_x, mouse_y, mouse_x, mouse_y, 
                 enemy.x, enemy.y, enemy.x2, enemy.y2)){
-            // al_play_sample(scream, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+            al_play_sample(scream, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
               ponto++;
             }
           }
@@ -252,7 +252,7 @@ while(!done) {
       al_draw_scaled_bitmap(fgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
       al_draw_scaled_bitmap(fgImg2, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
       
-      // al_draw_scaled_bitmap(herol, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
+      al_draw_scaled_bitmap(herol, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
       // al_draw_scaled_bitmap(heror, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
       al_draw_scaled_bitmap(demon, 0, 0, 640, 640, enemy.x, enemy.y, WIDTH/4.0, HEIGHT/4.0, 0);
 
