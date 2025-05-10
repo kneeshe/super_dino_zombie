@@ -1,3 +1,4 @@
+#include <allegro5/altime.h>
 #include <allegro5/bitmap.h>
 #include <allegro5/bitmap_draw.h>
 #include <allegro5/bitmap_io.h>
@@ -21,13 +22,14 @@
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_audio.h>
 #include <allegro5/allegro_acodec.h>
+#include <unistd.h>
+#include "cris.c"
 
 #define WIDTH 640
 #define HEIGHT 480
 #define KEY_SEEN 1
 #define KEY_DOWN 2
 
-const float FPS = 30.0;
 
 void must_init(bool test, const char *description) {
   if(test) {
@@ -46,12 +48,74 @@ bool collide(int ax1, int ay1, int ax2, int ay2, int bx1, int by1, int bx2, int 
    return true;
 }
 
+bool mouse_collide(float mouse_x, float mouse_y, float obj_x, float obj_y, float obj_width, float obj_height) {
+    if (mouse_x < obj_x) return false;
+    if (mouse_x > obj_x + obj_width) return false;
+    if (mouse_y < obj_y) return false;
+    if (mouse_y > obj_y + obj_height) return false;
+    
+    return true;
+}
+
+typedef struct BOUNCE {
+  float x, y;
+  float dx, dy;
+} BOUNCE;
+
 typedef struct CHAR {
   float x;
   float x2;
   float y;
   float y2;
 } CHAR;
+
+enum BOUNCER_TYPE {
+    BT_RECTANGLE_1,
+    BT_RECTANGLE_2,
+    ENEMY_1,
+    ENEMY_2,
+    BT_N
+};
+
+typedef struct BOUNCER {
+    float x, y;
+    float dx, dy;
+    int type;
+} BOUNCER;
+
+bool game_over = false;
+float game_over_timer = 0;
+const float GAME_OVER_DURATION = 5.0;
+
+void check_enemy_collision(CHAR* player, BOUNCER* enemies, int num_enemies, ALLEGRO_SAMPLE *sample) {
+    if (game_over) return;
+    
+    float player_width = 45; 
+    float player_height = 45;
+    
+    for (int i = 0; i < num_enemies; i++) {
+        BOUNCER* enemy = &enemies[i];
+        
+        if (enemy->type != ENEMY_1 && enemy->type != ENEMY_2) continue;
+        
+        float enemy_width = 45;
+        float enemy_height = 45;
+        
+        if (collide(player->x, player->y, player->x + player_width, player->y + player_height, enemy->x, enemy->y, enemy->x + enemy_width, enemy->y + enemy_height)) {
+            game_over = true;
+            game_over_timer = 0;
+            al_play_sample(sample, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+            break;
+        }
+    }
+}
+
+const float FPS = 30.0;
+const float GRAVITY = 0.5;
+float dy = 0;
+bool isJumping = false;
+float jumpSpeed = -12.0;
+const float GROUND = HEIGHT - 55;
 
 int main() {
   must_init(al_init(), "allegro");
@@ -71,6 +135,7 @@ int main() {
   ALLEGRO_DISPLAY *display = al_create_display(WIDTH, HEIGHT);
   must_init(display, "display");
 
+  al_set_window_title(display, "Super Cthulhu Zombie");
   const float scale_factor_x = ((float)al_get_display_width(display)) / WIDTH;
   const float scale_factor_y = ((float)al_get_display_height(display)) / HEIGHT;
 
@@ -81,7 +146,9 @@ int main() {
 
   ALLEGRO_FONT *font = al_create_builtin_font();
   must_init(font, "font");
-
+  ALLEGRO_FONT *game_over_font = al_create_builtin_font();
+  must_init(game_over_font, "game over font");
+ 
   must_init(al_init_primitives_addon(), "primitives");
 
   must_init(al_install_audio(), "audio");
@@ -90,6 +157,8 @@ int main() {
 
   ALLEGRO_SAMPLE *scream = al_load_sample("./sfx/scream-grind.wav");
   must_init(scream, "scream");
+  ALLEGRO_SAMPLE *death = al_load_sample("./sfx/glitch-scream.wav");
+  must_init(death, "death");
 
   ALLEGRO_AUDIO_STREAM *music = al_load_audio_stream("./sfx/action-loop.wav", 2, 2048);
   must_init(music, "music");
@@ -122,6 +191,9 @@ int main() {
   must_init(demon, "demon");
   ALLEGRO_BITMAP *cross = al_load_bitmap("./assets/crosshair.png");
   must_init(cross, "crosshair");
+  // ALLEGRO_BITMAP *icon = al_load_bitmap("./assets/icon.png");
+  // must_init(icon, "icon");
+  // al_set_display_icon(display, icon);
 
   al_register_event_source(queue, al_get_keyboard_event_source());
   al_register_event_source(queue, al_get_display_event_source(display));
@@ -136,6 +208,17 @@ int main() {
 
   ALLEGRO_EVENT event;
 
+  BOUNCER obj[BT_N];
+   for(int i = 0; i < BT_N; i++)
+   {
+       BOUNCER* b = &obj[i];
+       b->x = rand() % WIDTH;
+       b->y = rand() % HEIGHT;
+       b->dx = ((((float)rand()) / RAND_MAX) - 0.5) * 2 * 4;
+       b->dy = ((((float)rand()) / RAND_MAX) - 0.5) * 2 * 4;
+       b->type = i;
+   }
+
   CHAR john;
   john.x = 100;
   john.y = 100;
@@ -148,6 +231,13 @@ int main() {
   enemy.x2 = enemy.x + 50;
   enemy.y2 = enemy.y + 50;
 
+  CHAR enemy2;
+  enemy2.x = 100;
+  enemy2.y = 100;
+  enemy2.x2 = enemy2.x + 50;
+  enemy2.y2 = enemy2.y + 50;
+
+
   float vel = 15;
 
   float mouse_x = 0;
@@ -155,48 +245,84 @@ int main() {
 
   int ponto = 0;
 
-  const float GRAVITY = 0.5;
-  float dy = 0;
-  bool jump = false;
-  float jumpSpeed = -6.0;
-  const float ground = HEIGHT - 55;
-
   unsigned char key[ALLEGRO_KEY_MAX];
   memset(key, 0, sizeof(key));
 
-  al_start_timer(timer);
+
+al_start_timer(timer);
 while(!done) {
     al_wait_for_event(queue, &event);
 
     switch(event.type) {
         case ALLEGRO_EVENT_TIMER:
-          if(john.y < ground){
+          if (game_over) {
+        // Estamos em game over, atualizar o timer
+        game_over_timer += 1.0 / FPS; // Incrementa baseado no FPS
+        // Verificar se já passaram 5 segundos
+        if(game_over_timer >= GAME_OVER_DURATION){
+            done = true; // Sinaliza para sair do loop principal
+        }
+        // Não processa mais nada durante o game over
+        redraw = true;
+          }else {
+          for(int i = 0; i < BT_N; i++)
+            {
+              BOUNCER* b = &obj[i];
+                 b->x += b->dx;
+                 b->y += b->dy;
+
+                 if(b->x < 0)
+                  {
+                    b->x  *= -1;
+                    b->dx *= -1;
+                  }
+                 if(b->x > WIDTH)
+                  {
+                    b->x = 2*WIDTH - b->x;
+                    b->dx *= -1;
+                  }
+                 if(b->y < 0)
+                  {
+                    b->y  *= -1;
+                    b->dy *= -1;
+                  }
+                 if(b->y > HEIGHT)
+                  {
+                    b->y = 2*HEIGHT - b->y;
+                    b->dy *= -1;
+                  }
+                }
+          check_enemy_collision(&john, obj, BT_N, death);
+
+          if(key[ALLEGRO_KEY_SPACE] && !isJumping){
+            dy = jumpSpeed;
+            isJumping = true;
+          }
+          if(isJumping){
             dy += GRAVITY;
             john.y += dy;
-
-            if(john.y >= ground){
-              john.y = ground;
-              dy = 0;
-              jump = false;
-            }
-          } else {
+          }
+          if(john.y >= GROUND){
+            john.y = GROUND;
             dy = 0;
-            jump = false;
+            isJumping = false;
+          }else {
+            john.y = GROUND;
           }
 
-          if((key[ALLEGRO_KEY_W] & KEY_DOWN) && !jump){
-            dy = jumpSpeed;
-            jump = true;
-          }
-
-          // if(key[ALLEGRO_KEY_S])
-            // john.y += vel;
-        
-          if(key[ALLEGRO_KEY_A])
+          if(key[ALLEGRO_KEY_A]){
             john.x -= vel;
+            if(john.x < 0){
+              john.x *= -1;
+            }
+          }
 
-          if(key[ALLEGRO_KEY_D]) 
+          if(key[ALLEGRO_KEY_D]){
             john.x += vel;
+            if((john.x + 15) > WIDTH){
+              john.x -= (john.x - WIDTH) * 2;
+            }
+          }
 
           john.x2 = john.x + 50;
           john.y2 = john.y + 50;
@@ -223,18 +349,25 @@ while(!done) {
           break;
 
         case ALLEGRO_EVENT_MOUSE_AXES:
+          // al_set_mouse_xy(display, WIDTH/2, HEIGHT/2);
           mouse_x = event.mouse.x;
           mouse_y = event.mouse.y;
           break;
 
         case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
           if(event.mouse.button & 1){
-            if(collide(mouse_x, mouse_y, mouse_x, mouse_y, 
-                enemy.x, enemy.y, enemy.x2, enemy.y2)){
-            al_play_sample(scream, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
-              ponto++;
+            for(int i = 0; i < BT_N; i++) {
+              BOUNCER* b = &obj[i];
+              if(b->type == ENEMY_1 || b->type == ENEMY_2) {
+                if(mouse_collide(mouse_x, mouse_y, b->x, b->y, WIDTH/4.0, HEIGHT/4.0)) {
+                    ponto++;
+                    al_play_sample(scream, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                    break;
+                }
+              }
             }
           }
+        }
           break;
     }
 
@@ -242,7 +375,6 @@ while(!done) {
       break;
 
     if(redraw && al_is_event_queue_empty(queue)) {
-      redraw = false;
       al_clear_to_color(al_map_rgb(0, 0, 0));
 
       al_draw_scaled_bitmap(bgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
@@ -252,14 +384,44 @@ while(!done) {
       al_draw_scaled_bitmap(fgImg, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
       al_draw_scaled_bitmap(fgImg2, 0, 0, 620, 360, 0, 0, WIDTH, HEIGHT, 0);
       
+
+      for(int i = 0; i < BT_N; i++)
+        {
+          BOUNCER* b = &obj[i];
+          switch(b->type)
+            {
+              case BT_RECTANGLE_1:
+               al_draw_filled_rectangle(b->x, b->y, b->x + 100, b->y + 80, al_map_rgba_f(0, 0, 0.5, 0.5));
+               break;
+
+              case BT_RECTANGLE_2:
+                al_draw_filled_rectangle(b->x, b->y, b->x + 100, b->y + 80, al_map_rgba_f(0, 0, 0.5, 0.5));
+               break;
+              
+              case ENEMY_1:
+                al_draw_scaled_bitmap(demon, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
+               break;
+
+              case ENEMY_2:
+                al_draw_scaled_bitmap(demon, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
+               break;
+            }
+        }
+
       al_draw_scaled_bitmap(herol, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
+
+      if (game_over) {
+        al_draw_filled_rectangle(0, 0, WIDTH, HEIGHT, al_map_rgba(0, 0, 0, 200));
+        al_draw_textf(game_over_font, al_map_rgb(255, 0, 0),WIDTH / 2, HEIGHT / 2 - 10, ALLEGRO_ALIGN_CENTER, "G A M E  O V E R");
+      }
+
       // al_draw_scaled_bitmap(heror, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
-      al_draw_scaled_bitmap(demon, 0, 0, 640, 640, enemy.x, enemy.y, WIDTH/4.0, HEIGHT/4.0, 0);
 
       al_draw_scaled_bitmap(cross, 0, 0, 1024, 1024, mouse_x, mouse_y, 25, 25, 0);
       al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Pontuação %d", ponto);
       
       al_draw_text(font, al_map_rgb(255, 255, 255), WIDTH - 130, HEIGHT - 15, 0, "whynot?! Studios");
+
       al_flip_display();
       redraw = false;
     }
@@ -269,7 +431,9 @@ while(!done) {
   al_destroy_event_queue(queue);
   al_destroy_timer(timer);
   al_destroy_font(font);
+  al_destroy_font(game_over_font);
   al_destroy_sample(scream);
+  al_destroy_sample(death);
   al_destroy_audio_stream(music);
   al_destroy_audio_stream(music_bg);
   al_destroy_bitmap(bgImg);
@@ -282,6 +446,7 @@ while(!done) {
   al_destroy_bitmap(herol);
   al_destroy_bitmap(demon);
   al_destroy_bitmap(cross);
+  // al_destroy_bitmap(icon);
 
   return 0;
 }
