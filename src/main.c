@@ -70,7 +70,7 @@ typedef struct CHAR {
 } CHAR;
 
 enum BOUNCER_TYPE {
-    BT_RECTANGLE_1,
+    BT_CIRCLE,
     BT_RECTANGLE_2,
     ENEMY_1,
     ENEMY_2,
@@ -131,7 +131,7 @@ int main() {
   al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
   al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
   al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
-  al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
+  // al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
   ALLEGRO_DISPLAY *display = al_create_display(WIDTH, HEIGHT);
   must_init(display, "display");
 
@@ -189,11 +189,12 @@ int main() {
   must_init(herol, "hero");
   ALLEGRO_BITMAP *demon = al_load_bitmap("./assets/demon.png");
   must_init(demon, "demon");
-  ALLEGRO_BITMAP *cross = al_load_bitmap("./assets/crosshair.png");
+  ALLEGRO_BITMAP *cross = al_load_bitmap("./assets/cross.png");
   must_init(cross, "crosshair");
-  // ALLEGRO_BITMAP *icon = al_load_bitmap("./assets/icon.png");
-  // must_init(icon, "icon");
-  // al_set_display_icon(display, icon);
+  ALLEGRO_BITMAP *bad_block = al_load_bitmap("./assets/bad_block.png");
+  must_init(bad_block, "bad_block");
+  ALLEGRO_BITMAP *sad_circle = al_load_bitmap("./assets/sad_circle.png");
+  must_init(sad_circle, "sad_circle");
 
   al_register_event_source(queue, al_get_keyboard_event_source());
   al_register_event_source(queue, al_get_display_event_source(display));
@@ -256,13 +257,10 @@ while(!done) {
     switch(event.type) {
         case ALLEGRO_EVENT_TIMER:
           if (game_over) {
-        // Estamos em game over, atualizar o timer
-        game_over_timer += 1.0 / FPS; // Incrementa baseado no FPS
-        // Verificar se já passaram 5 segundos
+        game_over_timer += 1.0 / FPS; 
         if(game_over_timer >= GAME_OVER_DURATION){
-            done = true; // Sinaliza para sair do loop principal
+            done = true; 
         }
-        // Não processa mais nada durante o game over
         redraw = true;
           }else {
           for(int i = 0; i < BT_N; i++)
@@ -390,12 +388,12 @@ while(!done) {
           BOUNCER* b = &obj[i];
           switch(b->type)
             {
-              case BT_RECTANGLE_1:
-               al_draw_filled_rectangle(b->x, b->y, b->x + 100, b->y + 80, al_map_rgba_f(0, 0, 0.5, 0.5));
+              case BT_CIRCLE: 
+                al_draw_scaled_bitmap(sad_circle, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
                break;
 
               case BT_RECTANGLE_2:
-                al_draw_filled_rectangle(b->x, b->y, b->x + 100, b->y + 80, al_map_rgba_f(0, 0, 0.5, 0.5));
+                al_draw_scaled_bitmap(bad_block, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
                break;
               
               case ENEMY_1:
@@ -412,12 +410,12 @@ while(!done) {
 
       if (game_over) {
         al_draw_filled_rectangle(0, 0, WIDTH, HEIGHT, al_map_rgba(0, 0, 0, 200));
-        al_draw_textf(game_over_font, al_map_rgb(255, 0, 0),WIDTH / 2, HEIGHT / 2 - 10, ALLEGRO_ALIGN_CENTER, "G A M E  O V E R");
+        al_draw_textf(game_over_font, al_map_rgb(255, 0, 0),WIDTH / 2.0, HEIGHT / 2.0 - 10.0, ALLEGRO_ALIGN_CENTER, "G A M E  O V E R");
       }
 
       // al_draw_scaled_bitmap(heror, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
 
-      al_draw_scaled_bitmap(cross, 0, 0, 1024, 1024, mouse_x, mouse_y, 25, 25, 0);
+      al_draw_scaled_bitmap(cross, 0, 0, 1024, 1024, mouse_x, mouse_y, 125, 125, 0);
       al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Pontuação %d", ponto);
       
       al_draw_text(font, al_map_rgb(255, 255, 255), WIDTH - 130, HEIGHT - 15, 0, "whynot?! Studios");
@@ -446,7 +444,8 @@ while(!done) {
   al_destroy_bitmap(herol);
   al_destroy_bitmap(demon);
   al_destroy_bitmap(cross);
-  // al_destroy_bitmap(icon);
+  al_destroy_bitmap(bad_block);
+  al_destroy_bitmap(sad_circle);
 
   return 0;
 }
