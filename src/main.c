@@ -23,6 +23,7 @@
 #include <allegro5/allegro_audio.h>
 #include <allegro5/allegro_acodec.h>
 #include <unistd.h>
+#include <time.h>
 #include "cris.c"
 
 #define WIDTH 640
@@ -84,8 +85,8 @@ typedef struct BOUNCER {
 } BOUNCER;
 
 bool game_over = false;
-float game_over_timer = 0;
-const float GAME_OVER_DURATION = 5.0;
+float game_over_timer = 0.0;
+const float GAME_OVER_DURATION = 10.0;
 
 void check_enemy_collision(CHAR* player, BOUNCER* enemies, int num_enemies, ALLEGRO_SAMPLE *sample) {
     if (game_over) return;
@@ -110,12 +111,15 @@ void check_enemy_collision(CHAR* player, BOUNCER* enemies, int num_enemies, ALLE
     }
 }
 
+void take_screenshot(ALLEGRO_DISPLAY *display);
+
 const float FPS = 30.0;
 const float GRAVITY = 0.5;
 float dy = 0;
 bool isJumping = false;
 float jumpSpeed = -12.0;
 const float GROUND = HEIGHT - 55;
+float game_timer = 0.0;
 
 int main() {
   must_init(al_init(), "allegro");
@@ -263,6 +267,7 @@ while(!done) {
         }
         redraw = true;
           }else {
+          game_timer += 1.0 / FPS;
           for(int i = 0; i < BT_N; i++)
             {
               BOUNCER* b = &obj[i];
@@ -324,6 +329,10 @@ while(!done) {
 
           john.x2 = john.x + 50;
           john.y2 = john.y + 50;
+
+          if(key[ALLEGRO_KEY_P]){
+            take_screenshot(display);
+          }
 
           if(key[ALLEGRO_KEY_ESCAPE])
             done = true;
@@ -416,7 +425,8 @@ while(!done) {
       // al_draw_scaled_bitmap(heror, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
 
       al_draw_scaled_bitmap(cross, 0, 0, 1024, 1024, mouse_x, mouse_y, 125, 125, 0);
-      al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Pontuação %d", ponto);
+      al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 10, 0, "Almas exorcizadas: %d", ponto);
+      al_draw_textf(font, al_map_rgb(255, 255, 255), 10, 25, 0, "Tempo vivo: %.2f", game_timer);
       
       al_draw_text(font, al_map_rgb(255, 255, 255), WIDTH - 130, HEIGHT - 15, 0, "whynot?! Studios");
 
@@ -448,4 +458,30 @@ while(!done) {
   al_destroy_bitmap(sad_circle);
 
   return 0;
+}
+
+void take_screenshot(ALLEGRO_DISPLAY *display) {
+    // Cria um timestamp para o nome do arquivo
+    time_t rawtime;
+    struct tm *timeinfo;
+    char filename[64];
+    
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(filename, sizeof(filename), "screenshot_%Y%m%d_%H%M%S.png", timeinfo);
+    
+    // Captura o bitmap da tela
+    ALLEGRO_BITMAP *screenshot = al_create_bitmap(WIDTH, HEIGHT);
+    al_set_target_bitmap(screenshot);
+    al_draw_bitmap(al_get_backbuffer(display), 0, 0, 0);
+    
+    // Volta para o target original (backbuffer)
+    al_set_target_backbuffer(display);
+    
+    // Salva o screenshot como um arquivo PNG
+    al_save_bitmap(filename, screenshot);
+    printf("Screenshot salvo como: %s\n", filename);
+    
+    // Libera a memória
+    al_destroy_bitmap(screenshot);
 }
