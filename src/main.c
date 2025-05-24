@@ -75,6 +75,9 @@ enum BOUNCER_TYPE {
     BT_RECTANGLE_2,
     ENEMY_1,
     ENEMY_2,
+    FRASE_1,
+    FRASE_2,
+    FRASE_3,
     BT_N
 };
 
@@ -135,7 +138,7 @@ int main() {
   al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
   al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
   al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
-  // al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
+  al_set_new_display_flags(ALLEGRO_FULLSCREEN_WINDOW);
   ALLEGRO_DISPLAY *display = al_create_display(WIDTH, HEIGHT);
   must_init(display, "display");
 
@@ -164,15 +167,28 @@ int main() {
   ALLEGRO_SAMPLE *death = al_load_sample("./sfx/glitch-scream.wav");
   must_init(death, "death");
 
-  ALLEGRO_AUDIO_STREAM *music = al_load_audio_stream("./sfx/action-loop.wav", 2, 2048);
+  // ALLEGRO_AUDIO_STREAM *music = al_load_audio_stream("./sfx/action-loop.wav", 2, 2048);
+  // must_init(music, "music");
+  // al_set_audio_stream_playmode(music, ALLEGRO_PLAYMODE_LOOP);
+  // al_attach_audio_stream_to_mixer(music, al_get_default_mixer());
+  //
+  // ALLEGRO_AUDIO_STREAM *music_bg = al_load_audio_stream("./sfx/action-effect.wav", 2, 2048);
+  // must_init(music_bg, "music_bg");
+  // al_set_audio_stream_playmode(music_bg, ALLEGRO_PLAYMODE_LOOP);
+  // al_attach_audio_stream_to_mixer(music_bg, al_get_default_mixer());
+  
+  ALLEGRO_AUDIO_STREAM *music = al_load_audio_stream("./sfx/whisper.wav", 2, 2048);
   must_init(music, "music");
+  al_set_audio_stream_gain(music, 1.0);
   al_set_audio_stream_playmode(music, ALLEGRO_PLAYMODE_LOOP);
   al_attach_audio_stream_to_mixer(music, al_get_default_mixer());
   
-  ALLEGRO_AUDIO_STREAM *music_bg = al_load_audio_stream("./sfx/action-effect.wav", 2, 2048);
+  ALLEGRO_AUDIO_STREAM *music_bg = al_load_audio_stream("./sfx/witch.wav", 2, 2048);
   must_init(music_bg, "music_bg");
+  al_set_audio_stream_gain(music_bg, 0.2);
   al_set_audio_stream_playmode(music_bg, ALLEGRO_PLAYMODE_LOOP);
   al_attach_audio_stream_to_mixer(music_bg, al_get_default_mixer());
+
 
   must_init(al_init_image_addon(), "image");
   ALLEGRO_BITMAP *bgImg = al_load_bitmap("./assets/bg/1.png");
@@ -412,6 +428,16 @@ while(!done) {
               case ENEMY_2:
                 al_draw_scaled_bitmap(demon, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
                break;
+
+              case FRASE_1:
+                al_draw_text(font, al_map_rgb(0, 0, 0), b->x, b->y, 0, "TUDO CULPA SUA!");
+                break;
+              case FRASE_2:
+                al_draw_text(font, al_map_rgb(0, 0, 0), b->x, b->y, 0, "DESISTA E MORRA!");
+                break;
+              case FRASE_3:
+                al_draw_text(font, al_map_rgb(0, 0, 0), b->x, b->y, 0, "NAO TEM SAIDA!");
+                break;
             }
         }
 
@@ -419,7 +445,7 @@ while(!done) {
 
       if (game_over) {
         al_draw_filled_rectangle(0, 0, WIDTH, HEIGHT, al_map_rgba(0, 0, 0, 200));
-        al_draw_textf(game_over_font, al_map_rgb(255, 0, 0),WIDTH / 2.0, HEIGHT / 2.0 - 10.0, ALLEGRO_ALIGN_CENTER, "G A M E  O V E R");
+        al_draw_textf(game_over_font, al_map_rgb(255, 0, 0),WIDTH / 2.0, HEIGHT / 2.0 - 10.0, ALLEGRO_ALIGN_CENTER, "A MORTE É A UNICA SAIDA");
       }
 
       // al_draw_scaled_bitmap(heror, 0, 0, 640, 640, john.x, john.y, WIDTH/4.0, HEIGHT/4.0, 0);
@@ -461,7 +487,6 @@ while(!done) {
 }
 
 void take_screenshot(ALLEGRO_DISPLAY *display) {
-    // Cria um timestamp para o nome do arquivo
     time_t rawtime;
     struct tm *timeinfo;
     char filename[64];
@@ -470,18 +495,14 @@ void take_screenshot(ALLEGRO_DISPLAY *display) {
     timeinfo = localtime(&rawtime);
     strftime(filename, sizeof(filename), "screenshot_%Y%m%d_%H%M%S.png", timeinfo);
     
-    // Captura o bitmap da tela
     ALLEGRO_BITMAP *screenshot = al_create_bitmap(WIDTH, HEIGHT);
     al_set_target_bitmap(screenshot);
     al_draw_bitmap(al_get_backbuffer(display), 0, 0, 0);
     
-    // Volta para o target original (backbuffer)
     al_set_target_backbuffer(display);
     
-    // Salva o screenshot como um arquivo PNG
     al_save_bitmap(filename, screenshot);
     printf("Screenshot salvo como: %s\n", filename);
     
-    // Libera a memória
     al_destroy_bitmap(screenshot);
 }
