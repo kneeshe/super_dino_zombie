@@ -73,6 +73,7 @@ typedef struct CHAR {
 enum BOUNCER_TYPE {
     BT_CIRCLE,
     BT_RECTANGLE_2,
+    BT_BLEND,
     ENEMY_1,
     ENEMY_2,
     FRASE_1,
@@ -215,6 +216,8 @@ int main() {
   must_init(bad_block, "bad_block");
   ALLEGRO_BITMAP *sad_circle = al_load_bitmap("./assets/sad_circle.png");
   must_init(sad_circle, "sad_circle");
+  ALLEGRO_BITMAP *grad_circle = al_load_bitmap("./assets/grad_circle.png");
+  must_init(grad_circle, "grad_circle");
 
   al_register_event_source(queue, al_get_keyboard_event_source());
   al_register_event_source(queue, al_get_display_event_source(display));
@@ -420,6 +423,10 @@ while(!done) {
               case BT_RECTANGLE_2:
                 al_draw_scaled_bitmap(bad_block, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
                break;
+
+              case BT_BLEND:
+                al_draw_scaled_bitmap(grad_circle, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
+               break;
               
               case ENEMY_1:
                 al_draw_scaled_bitmap(demon, 0, 0, 640, 640, b->x, b->y, WIDTH/4.0, HEIGHT/4.0, 0);
@@ -430,7 +437,7 @@ while(!done) {
                break;
 
               case FRASE_1:
-                al_draw_text(font, al_map_rgb(0, 0, 0), b->x, b->y, 0, "TUDO CULPA SUA!");
+                al_draw_text(font, al_map_rgb(0, 0, 0), b->x, b->y, 0, "É TUDO CULPA SUA!");
                 break;
               case FRASE_2:
                 al_draw_text(font, al_map_rgb(0, 0, 0), b->x, b->y, 0, "DESISTA E MORRA!");
@@ -482,6 +489,7 @@ while(!done) {
   al_destroy_bitmap(cross);
   al_destroy_bitmap(bad_block);
   al_destroy_bitmap(sad_circle);
+  al_destroy_bitmap(grad_circle);
 
   return 0;
 }
